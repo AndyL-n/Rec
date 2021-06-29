@@ -60,10 +60,10 @@ class SVD():
                 item_index = self.itemList.index(item)
                 y_true.append(d[2])
                 y_hat.append(self.predict(user_index, item_index))
+
         return y_true, y_hat
 
-
-
+    # 可生成推荐序列，验证召回率和准确率
     def RMSE(self, a, b):
         return (np.average((np.array(a) - np.array(b)) ** 2)) ** 0.5
 if __name__ == '__main__':

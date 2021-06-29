@@ -134,7 +134,7 @@ class ItemBasedCF():
                     item_popularity[item] += 1
                 else:
                     item_popularity.setdefault(item, 1)
-
+        print(recommed_dict)
         precision = metric.precision(recommed_dict, test_user_items)
         recall = metric.recall(recommed_dict, test_user_items)
         coverage = metric.coverage(recommed_dict, self.item_set)
