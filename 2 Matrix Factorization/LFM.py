@@ -6,6 +6,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC
 import numpy as np
 import os
+import sys
 import warnings
 import pandas as pd
 from tqdm import tqdm
@@ -142,7 +143,7 @@ class loading():
         """
         return {'feat': feat}
 
-    def dataset(self, file, latent_dim=4, test_size=0.2):
+    def dataset(self, file, latent_dim = 4, pivot = 0.2):
         """
         create the explicit dataset of movielens-1m
         We took the last 20% of each user sorted by timestamp as the test dataset
@@ -162,10 +163,12 @@ class loading():
                             self.sparseFeature('item_id', item_num, latent_dim)]]
         # split train dataset and test dataset
         watch_count = data_df.groupby(by='UserId')['MovieId'].agg('count')
-        test_df = pd.concat([
-            data_df[data_df.UserId == i].iloc[int(0.8 * watch_count[i]):] for i in tqdm(watch_count.index)], axis=0)
+        print("分割后"+str(pivot*100)+"%作为数据集\n")
+        test_df = pd.concat([data_df[data_df.UserId == i].iloc[int((1 - pivot) * watch_count[i]):] for i in tqdm(watch_count.index)], axis=0)
+        print(test_df.head())
         test_df = test_df.reset_index()
         train_df = data_df.drop(labels=test_df['index'])
+        # 删除非需求列
         train_df = train_df.drop(['Timestamp'], axis=1).sample(frac=1.).reset_index(drop=True)
         test_df = test_df.drop(['index', 'Timestamp'], axis=1).sample(frac=1.).reset_index(drop=True)
         train_X = [train_df['avg_score'].values, train_df[['UserId', 'MovieId']].values]
@@ -187,9 +190,9 @@ if __name__ == '__main__':
     # Dataset
     load = loading()
     feature_columns, train, test = load.dataset(rating_file, latent_dim, pivot)
+    # print(feature_columns)
     train_X, train_y = train
     test_X, test_y = test
-
     # Model
     model = MF(feature_columns, use_bias)
     model.summary()
@@ -201,9 +204,7 @@ if __name__ == '__main__':
     # Compile
     model.compile(loss='mse', optimizer=Adam(learning_rate=learning_rate),metrics=['mse'])
     # Train
-    model.fit(
-        train_X,
-        train_y,
+    model.fit(train_X,train_y,
         epochs=epochs,
         # callbacks=[checkpoint],
         batch_size=batch_size,
