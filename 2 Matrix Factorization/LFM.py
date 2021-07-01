@@ -9,7 +9,6 @@ import os
 import sys
 import warnings
 import pandas as pd
-from tqdm import tqdm
 warnings.filterwarnings('ignore')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -155,6 +154,7 @@ class loading():
         """
         data_df = pd.read_csv(file, sep="::", engine='python',
                               names=['UserId', 'MovieId', 'Rating', 'Timestamp'])
+        print(len(data_df))
         data_df['avg_score'] = data_df.groupby(by='UserId')['Rating'].transform('mean')
         # feature columns
         user_num, item_num = data_df['UserId'].max() + 1, data_df['MovieId'].max() + 1
@@ -164,7 +164,7 @@ class loading():
         # split train dataset and test dataset
         watch_count = data_df.groupby(by='UserId')['MovieId'].agg('count')
         print("分割后"+str(pivot*100)+"%作为数据集\n")
-        test_df = pd.concat([data_df[data_df.UserId == i].iloc[int((1 - pivot) * watch_count[i]):] for i in tqdm(watch_count.index)], axis=0)
+        test_df = pd.concat([data_df[data_df.UserId == i].iloc[int((1 - pivot) * watch_count[i]):] for i in (watch_count.index)], axis=0)
         print(test_df.head())
         test_df = test_df.reset_index()
         train_df = data_df.drop(labels=test_df['index'])
@@ -190,9 +190,14 @@ if __name__ == '__main__':
     # Dataset
     load = loading()
     feature_columns, train, test = load.dataset(rating_file, latent_dim, pivot)
-    # print(feature_columns)
+    print(feature_columns)
     train_X, train_y = train
+    print("---------------------")
+    print(train_X,train_y)
     test_X, test_y = test
+    print(len(test_X[0]),test_y[0])
+
+
     # Model
     model = MF(feature_columns, use_bias)
     model.summary()

@@ -9,6 +9,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC
 from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
 from sklearn.model_selection import train_test_split
+import sys
 import os
 import pandas as pd
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -101,14 +102,14 @@ class loading():
         :return:
         """
         return {'feat': feat}
-    def dataset(self, file, embed_dim=8, read_part=True, sample_num=100000, test_size=0.2):
+    def dataset(self, file, embed_dim=8, read_part=True, sample_num=100000, pivot=0.2):
         """
         a example about creating criteo dataset
         :param file: dataset's path
         :param embed_dim: the embedding dimension of sparse features
         :param read_part: whether to read part of it
         :param sample_num: the number of instances if read_part is True
-        :param test_size: ratio of test dataset
+        :param pivot: ratio of test dataset
         :return: feature columns, train, test
         """
         names = ['label', 'I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'I9', 'I10', 'I11',
@@ -144,8 +145,7 @@ class loading():
         # ====================================================
         feature_columns = [self.sparseFeature(feat, int(data_df[feat].max()) + 1, embed_dim=embed_dim)
                            for feat in features]
-        train, test = train_test_split(data_df, test_size=test_size)
-
+        train, test = train_test_split(data_df, pivot=pivot)
         train_X = train[features].values.astype('int32')
         train_y = train['label'].values.astype('int32')
         test_X = test[features].values.astype('int32')
@@ -161,22 +161,24 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = '4'
     # ========================= Hyper Parameters =======================
     # you can modify your file path
-    file = '../dataset/Criteo/train.txt'
+    file = '../data/Criteo/train.txt'
     read_part = True
     sample_num = 5000000
-    test_size = 0.2
-
+    pivot = 0.2
+    load = loading()
     k = 8
 
     learning_rate = 0.001
     batch_size = 4096
     epochs = 10
     # ========================== Create dataset =======================
-    feature_columns, train, test = loading.dataset(file=file,
+    feature_columns, train, test = load.dataset(file=file,
                                            read_part=read_part,
                                            sample_num=sample_num,
-                                           test_size=test_size)
+                                           pivot=pivot)
     train_X, train_y = train
+    print(train_X[0],train_y[0])
+    sys.exit()
     test_X, test_y = test
     # ============================Build Model==========================
     # mirrored_strategy = tf.distribute.MirroredStrategy()
