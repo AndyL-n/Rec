@@ -5,6 +5,8 @@ import tensorflow as tf
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.losses import binary_crossentropy
+
 
 class LR_layer(Layer):
     def __init__(self, feature_length):

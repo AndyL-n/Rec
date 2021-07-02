@@ -1,91 +1,83 @@
 import tensorflow as tf
-from tensorflow.keras import Model
 from tensorflow.keras.layers import Layer, Input
 from tensorflow.keras.regularizers import l2
-import tensorflow as tf
-from tensorflow.keras.losses import binary_crossentropy
+from tensorflow.keras import Model
 from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import AUC
 from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
 from sklearn.model_selection import train_test_split
-import sys
-import os
 import pandas as pd
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+import os
 
-class FM_Layer(Layer):
-    def __init__(self, feature_columns, k, w_reg=1e-6, v_reg=1e-6):
+class FFM_Layer(Layer):
+    def __init__(self, sparse_feature_columns, k, w_reg=1e-6, v_reg=1e-6):
         """
-        Factorization Machines
-        :param feature_columns: A list. sparse column feature information.
-        :param k: the latent vector
-        :param w_reg: the regularization coefficient of parameter w
-        :param v_reg: the regularization coefficient of parameter v
+        :param dense_feature_columns: A list. sparse column feature information.
+        :param k: A scalar. The latent vector
+        :param w_reg: A scalar. The regularization coefficient of parameter w
+		:param v_reg: A scalar. The regularization coefficient of parameter v
         """
-        super(FM_Layer, self).__init__()
-        self.sparse_feature_columns = feature_columns
+        super(FFM_Layer, self).__init__()
+        self.sparse_feature_columns = sparse_feature_columns
+        self.k = k
+        self.w_reg = w_reg
+        self.v_reg = v_reg
         self.index_mapping = []
         self.feature_length = 0
         for feat in self.sparse_feature_columns:
             self.index_mapping.append(self.feature_length)
             self.feature_length += feat['feat_num']
-        print(self.index_mapping)
-        print(self.feature_length)
-        sys.exit()
-        self.k = k
-        self.w_reg = w_reg
-        self.v_reg = v_reg
+        self.field_num = len(self.sparse_feature_columns)
 
     def build(self, input_shape):
         self.w0 = self.add_weight(name='w0', shape=(1,),
                                   initializer=tf.zeros_initializer(),
                                   trainable=True)
         self.w = self.add_weight(name='w', shape=(self.feature_length, 1),
-                                 initializer=tf.random_normal_initializer(),
+                                 initializer='random_normal',
                                  regularizer=l2(self.w_reg),
                                  trainable=True)
-        self.V = self.add_weight(name='V', shape=(self.feature_length, self.k),
-                                 initializer=tf.random_normal_initializer(),
+        self.v = self.add_weight(name='v',
+                                 shape=(self.feature_length, self.field_num, self.k),
+                                 initializer='random_normal',
                                  regularizer=l2(self.v_reg),
                                  trainable=True)
 
     def call(self, inputs, **kwargs):
-        # mapping
         inputs = inputs + tf.convert_to_tensor(self.index_mapping)
         # first order
         first_order = self.w0 + tf.reduce_sum(tf.nn.embedding_lookup(self.w, inputs), axis=1)  # (batch_size, 1)
-        # second order
-        second_inputs = tf.nn.embedding_lookup(self.V, inputs)  # (batch_size, fields, embed_dim)
-        square_sum = tf.square(tf.reduce_sum(second_inputs, axis=1, keepdims=True))  # (batch_size, 1, embed_dim)
-        sum_square = tf.reduce_sum(tf.square(second_inputs), axis=1, keepdims=True)  # (batch_size, 1, embed_dim)
-        second_order = 0.5 * tf.reduce_sum(square_sum - sum_square, axis=2)  # (batch_size, 1)
-        # outputs
-        outputs = first_order + second_order
-        return outputs
+        # field second order
+        second_order = 0
+        latent_vector = tf.reduce_sum(tf.nn.embedding_lookup(self.v, inputs), axis=1)  # (batch_size, field_num, k)
+        for i in range(self.field_num):
+            for j in range(i+1, self.field_num):
+                second_order += tf.reduce_sum(latent_vector[:, i] * latent_vector[:, j], axis=1, keepdims=True)
+        return first_order + second_order
 
-
-class FM(Model):
+class FFM(Model):
     def __init__(self, feature_columns, k, w_reg=1e-6, v_reg=1e-6):
         """
-        Factorization Machines
+        FFM architecture
         :param feature_columns: A list. sparse column feature information.
         :param k: the latent vector
         :param w_reg: the regularization coefficient of parameter w
-		:param v_reg: the regularization coefficient of parameter v
+		:param field_reg_reg: the regularization coefficient of parameter v
         """
-        super(FM, self).__init__()
+        super(FFM, self).__init__()
         self.sparse_feature_columns = feature_columns
-        self.fm = FM_Layer(feature_columns, k, w_reg, v_reg)
+        self.ffm = FFM_Layer(self.sparse_feature_columns, k, w_reg, v_reg)
 
     def call(self, inputs, **kwargs):
-        fm_outputs = self.fm(inputs)
-        outputs = tf.nn.sigmoid(fm_outputs)
+        ffm_out = self.ffm(inputs)
+        outputs = tf.nn.sigmoid(ffm_out)
         return outputs
 
     def summary(self, **kwargs):
         sparse_inputs = Input(shape=(len(self.sparse_feature_columns),), dtype=tf.int32)
-        Model(inputs=sparse_inputs, outputs=self.call(sparse_inputs)).summary()
+        tf.keras.Model(inputs=sparse_inputs, outputs=self.call(sparse_inputs)).summary()
 
 class loading():
     def sparseFeature(self, feat, feat_num, embed_dim=4):
@@ -166,14 +158,15 @@ if __name__ == '__main__':
     # you can modify your file path
     file = '../data/Criteo/train.txt'
     read_part = True
-    sample_num = 5000000
+    sample_num = 10000
     pivot = 0.2
     load = loading()
-    k = 8
+    k = 10
 
     learning_rate = 0.001
     batch_size = 4096
-    epochs = 50
+    epochs = 10
+
     # ========================== Create dataset =======================
     feature_columns, train, test = load.dataset(file=file,
                                            read_part=read_part,
@@ -181,20 +174,16 @@ if __name__ == '__main__':
                                            pivot=pivot)
     train_X, train_y = train
     test_X, test_y = test
-    print(feature_columns)
-    print("\n\n\n")
     # ============================Build Model==========================
-    # mirrored_strategy = tf.distribute.MirroredStrategy()
-    # with mirrored_strategy.scope():
-    model = FM(feature_columns=feature_columns, k=k)
+    model = FFM(feature_columns=feature_columns, k=k)
     model.summary()
-    # ============================Compile============================
-    model.compile(loss=binary_crossentropy, optimizer=Adam(learning_rate=learning_rate),
-                      metrics=[AUC()])
     # ============================model checkpoint======================
     # check_path = '../save/fm_weights.epoch_{epoch:04d}.val_loss_{val_loss:.4f}.ckpt'
     # checkpoint = tf.keras.callbacks.ModelCheckpoint(check_path, save_weights_only=True,
     #                                                 verbose=1, period=5)
+    # ============================Compile============================
+    model.compile(loss=binary_crossentropy, optimizer=Adam(learning_rate=learning_rate),
+                  metrics=[AUC()])
     # ==============================Fit==============================
     model.fit(
         train_X,
