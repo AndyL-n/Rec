@@ -197,6 +197,9 @@ if __name__ == '__main__':
     test_X, test_y = test
     print(len(test_X[0]),test_y[0])
 
+    # config['n_users'] = data_generator.n_users
+    # config['n_items'] = data_generator.n_items
+    # config['norm_adj']
 
     # Model
     model = MF(feature_columns, use_bias)

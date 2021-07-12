@@ -144,6 +144,8 @@ class GCN(object):
         print("权重初始化完成")
         return all_weights
 
+    def build(self):
+
     def create_ngcf_embed(self):
         if self.node_dropout_flag:
             A_fold_hat = self._split_A_hat_node_dropout(self.norm_adj)
