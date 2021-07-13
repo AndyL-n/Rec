@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import sys
 
 class NeighborAggregator(tf.keras.Model):
     def __init__(self, input_dim, output_dim, use_bias=False, aggr_method="mean"):
@@ -124,9 +124,42 @@ class DSSM(tf.keras.Model):
         self.num_layers = len(self.num_neighbors_list)
         self.GAE_user = GraphSage(input_dim=self.input_dim_user, hidden_dim=self.hidden_dim, num_neighbors_list=self.num_neighbors_list)
         self.GAE_item = GraphSage(input_dim=self.input_dim_item, hidden_dim=self.hidden_dim, num_neighbors_list=self.num_neighbors_list)
-
+        # MLP
+        self.w1 = self.add_weight(shape=(self.hidden_dim[-1] * 2, self.hidden_dim[-1]),
+                                      initializer='glorot_uniform', name='mlp_weight1')
+        self.b1 = self.add_weight(shape=(1, self.hidden_dim[-1]),
+                                        initializer='zero', name='mlp_bias1')
+        self.w2 = self.add_weight(shape=(self.hidden_dim[-1], 8),
+                                      initializer='glorot_uniform', name='mlp_weight2')
+        self.b2 = self.add_weight(shape=(1, 8),
+                                        initializer='zero', name='mlp_bias2')
+        self.w3 = self.add_weight(shape=(8, 1),
+                                      initializer='glorot_uniform', name='mlp_weight3')
+        self.b3 = self.add_weight(shape=(1, 1),
+                                        initializer='zero', name='mlp_bias3')
     def call(self, user_node_features_list, item_node_features_list):
         user = self.GAE_user(user_node_features_list)
         item = self.GAE_item(item_node_features_list)
-        output = tf.matmul(user,item)
+        # print("------------------user&item-------------------------")
+        # print(user)
+        # print(user.dtype)
+        # print(item)
+        # print(item.dtype)
+        # print("-------------------tmp------------------------------")
+        tmp = tf.concat([user,item], axis=1)
+        # print(tmp)
+        # print(tmp.dtype)
+        # print("-------------------MLP------------------------------")
+        # print(tf.matmul(tmp, self.w1))
+        # print(self.b1)
+        MLP1 = tf.matmul(tmp, self.w1) + self.b1
+        # print(MLP1)
+        # print(MLP1.dtype)
+        # print("----------------------------------------------------")
+        MLP2 = tf.matmul(MLP1, self.w2) + self.b2
+        MLP3 = tf.matmul(MLP2, self.w3) + self.b3
+        # print("----------------------------------------------------")
+        # print(MLP3)
+        # print("----------------------------------------------------")
+        output = tf.keras.activations.relu(MLP3)
         return output

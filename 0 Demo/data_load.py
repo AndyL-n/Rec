@@ -38,10 +38,10 @@ class CF():
 
     def load(self):
         self.get_dataset()
-        # self.item_similarity()
+        self.item_similarity()
         self.user_similarity()
-        # self.item_embedding()
-        # self.user_embedding()
+        self.item_embedding()
+        self.user_embedding()
         return self.user_adj, self.item_adj,self.train,self.test,self.user_emb,self.item_emb
     # 读文件得到“用户-电影”数据
     def get_dataset(self, pivot=0.8):
@@ -165,7 +165,9 @@ class CF():
             one_hot[gender.index(genders[i]) + len(age)] = 1
             one_hot[occupation.index(occupations[i]) + len(age) + len(gender)] = 1
             one_hot[address.index(addresses[i]) + len(age) + len(gender) + len(occupation)] = 1
+            one_hot = np.array(one_hot).astype(np.float).tolist()
             self.user_emb.append(one_hot)
+        # self.user_emb = np.array(self.user_emb, dtype=float)
 
     """Item_embedding"""
     def item_embedding(self):
@@ -187,9 +189,11 @@ class CF():
             year = list(set(years))
             # print(self.item_emb)
             for i in range(1,self.n_items+1):
-                one_hot = [0 for _ in range(len(year))]
-                one_hot[year.index(years[i-1])] = 1
+                one_hot = [0.0 for _ in range(len(year))]
+                one_hot[year.index(years[i-1])] = 1.0
                 self.item_emb[i] = one_hot + self.item_emb[i]
+                self.item_emb[i] = np.array(self.item_emb[i]).astype(np.float).tolist()
+            # self.item_emb = np.array(self.item_emb, dtype=float)
 
 if __name__ == '__main__':
     t1 = time.time()

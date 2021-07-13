@@ -1,5 +1,24 @@
 import numpy as np
 import random
+import sys
+
+def maxk(arraylist,k):
+    '''
+    前k个的索引
+    '''
+    maxlist=[]
+    maxlist_id= list(range(0,k+1))# 去掉自身首元素
+    m=[maxlist,maxlist_id]
+    for i in maxlist_id:
+        maxlist.append(arraylist[i])
+    for i in range(k,len(arraylist)):#对目标数组之后的数字
+        if arraylist[i]>min(maxlist):
+            mm=maxlist.index(min(maxlist))
+            del m[0][mm]
+            del m[1][mm]
+            m[0].append(arraylist[i])
+            m[1].append(i)
+    return maxlist_id[1:]
 
 def sampling(src_nodes, sample_num, neighbor_table):
     """根据源节点采样指定数量的邻居节点，注意使用的是有放回的采样；
@@ -16,14 +35,10 @@ def sampling(src_nodes, sample_num, neighbor_table):
     results = []
     for node in src_nodes:
         # 从节点的邻居中进行有放回地进行采样
-        neighbor_rank = neighbor_table.todense()[node][0]
-        print(neighbor_rank)
-        print(neighbor_rank[0])
-        print(neighbor_rank[node])
-        sys.exit()
-        results = results + res
-    print(res)
-    return res
+        neighbor_rank = list(neighbor_table.todense().A[node, :])
+        neighbors = maxk(neighbor_rank, sample_num)
+        results = results + neighbors
+    return results
 
 
 def multihop_sampling(src_nodes, sample_nums, neighbor_table):
