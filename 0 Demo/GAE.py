@@ -66,7 +66,7 @@ class SageGCN(tf.keras.Model):
                                              aggr_method=aggr_neighbor_method)
 
         self.weight = self.add_weight(shape=(self.input_dim, self.hidden_dim),
-                                      initializer='glorot_uniform',
+                                      initializer='glorot_uniformglorot_uniform',
                                       name='kernel')
 
     def call(self, src_node_features, neighbor_node_features):

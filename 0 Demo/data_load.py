@@ -38,8 +38,12 @@ class CF():
 
     def load(self):
         self.get_dataset()
-        self.item_similarity()
-        self.user_similarity()
+        # self.item_similarity()
+        # self.user_similarity()
+        # sp.save_npz('user_adj', self.user_adj)
+        # sp.save_npz('item_adj', self.item_adj)
+        self.user_adj = sp.load_npz('user_adj.npz')
+        self.item_adj = sp.load_npz('item_adj.npz')
         self.item_embedding()
         self.user_embedding()
         return self.user_adj, self.item_adj,self.train,self.test,self.user_emb,self.item_emb
@@ -108,7 +112,6 @@ class CF():
                 self.item_adj[int(j), int(i)] = self.movie_sim_matrix[i][j]
         self.item_adj += sp.eye(self.item_adj.shape[0])
         self.item_adj = self.item_adj.tocsr()
-        # sp.save_npz('item_adj.npz', self.item_adj)
 
     """UserCF-LIF"""
     def user_similarity(self):
@@ -141,7 +144,6 @@ class CF():
 
         self.user_adj += sp.eye(self.user_adj.shape[0])
         self.user_adj = self.user_adj.tocsr()
-        sp.save_npz('user_adj.npz', self.user_adj)
 
     """User_embedding"""
     def user_embedding(self):

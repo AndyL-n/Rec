@@ -10,6 +10,8 @@ from collections import namedtuple
 
 import matplotlib.pyplot as plt
 
+t1 = time.time()
+print("time:{}".format(t1-t1))
 # 输入维度
 INPUT_DIM_USER = 879
 INPUT_DIM_ITEM = 91
@@ -30,12 +32,13 @@ loss_object = tf.keras.losses.MeanSquaredError()
 
 # 记录过程值，以便最后可视化
 train_loss = []
-train_val_MSE = []
-train_test_MSE = []
+train_val_RMSE = []
+train_test_RMSE = []
 
-def train(t1):
-    print("time:{}".format(time.time() - t1))
+def train():
+    print("begin_train time:{}".format(time.time() - t1))
     for e in range(EPOCHS):
+        losses = 0.0
         for batch in range(NUM_BATCH_PER_EPOCH):
             batch_src = random.sample(train_set, BTACH_SIZE)
             batch_src_users = [i[0] for i in batch_src]
@@ -60,34 +63,39 @@ def train(t1):
             with tf.GradientTape() as tape:
                 batch_train_scores = model(batch_sampline_embedding_user, batch_sampline_embedding_item)
                 loss = loss_object(batch_src_scores, batch_train_scores)
-                print("Epoch {:03d} Batch {:03d} loss(MSE):{}".format(e, batch, loss))
+                batch_train_scores = tf.reshape(batch_train_scores, shape=(BTACH_SIZE,))
+                losses += loss
+                print(batch_train_scores.numpy())
+                print("Epoch {:03d} Batch {:03d} loss(MSE):{} time:{}".format(e, batch, loss, time.time()-t1))
                 grads = tape.gradient(loss, model.trainable_variables)
 
                 optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
+        loss = losses/ NUM_BATCH_PER_EPOCH
         train_val = test(train_set)
         train_test = test(test_set)
         print("Epoch {:03d} loss: {} val MSE: {} test MSE:{} time:{}".format(e, loss, train_val, train_test, time.time()-t1))
 
         train_loss.append(loss)
-        train_val_MSE.append(train_val)
-        train_test_MSE.append(train_test)
+        train_val_RMSE.append(train_val)
+        train_test_RMSE.append(train_test)
         # 训练过程可视化
         fig, axes = plt.subplots(3, sharex=True, figsize=(12, 8))
         fig.suptitle('Training Metrics')
         axes[0].set_ylabel("Loss", fontsize=14)
         axes[0].plot(train_loss)
 
-        axes[1].set_ylabel("Val MSE", fontsize=14)
-        axes[1].plot(train_val_MSE)
+        axes[1].set_ylabel("Val RMSE", fontsize=14)
+        axes[1].plot(train_val_RMSE)
 
-        axes[2].set_ylabel("Test MSE", fontsize=14)
-        axes[2].plot(train_test_MSE)
+        axes[2].set_ylabel("Test RMSE", fontsize=14)
+        axes[2].plot(train_test_RMSE)
 
-        plt.show()
+        filePath = (str(e))
+        plt.savefig(filePath)
 
 def test(Set):
-    Set = random.sample(Set, BTACH_SIZE * 4)
+    Set = random.sample(Set, BTACH_SIZE * 5)
     users = [i[0] for i in Set]
     items = [i[1] for i in Set]
     scores = [i[2] for i in Set]
@@ -104,10 +112,13 @@ def test(Set):
         for item in items:
             batch_sampline_embedding_item[id].append(item_emb[item])
     batch_train_scores = model(batch_sampline_embedding_user, batch_sampline_embedding_item)
+    scores = tf.constant(scores, dtype=float)
     MSE = loss_object(batch_train_scores, scores)
-    return MSE
+    RMSE = tf.sqrt(MSE)
+    return RMSE
+
 if __name__ == '__main__':
-    t1 = time.time()
-    train(t1)
+    print("time:{}".format(time.time() - t1))
+    train()
     print("time:{}".format(time.time() - t1))
 
