@@ -38,12 +38,12 @@ class CF():
 
     def load(self):
         self.get_dataset()
-        # self.item_similarity()
-        # self.user_similarity()
-        # sp.save_npz('user_adj', self.user_adj)
-        # sp.save_npz('item_adj', self.item_adj)
-        self.user_adj = sp.load_npz('user_adj.npz')
-        self.item_adj = sp.load_npz('item_adj.npz')
+        self.item_similarity()
+        self.user_similarity()
+        sp.save_npz('user_adj', self.user_adj)
+        sp.save_npz('item_adj', self.item_adj)
+        # self.user_adj = sp.load_npz('user_adj.npz')
+        # self.item_adj = sp.load_npz('item_adj.npz')
         self.item_embedding()
         self.user_embedding()
         return self.user_adj, self.item_adj,self.train,self.test,self.user_emb,self.item_emb
